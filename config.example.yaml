@@ -1,0 +1,88 @@
+# HomeDash configuration.
+#
+# Copy this file to config.yaml and fill in your own hosts/credentials.
+# config.yaml is gitignored so your secrets never get committed.
+
+# How often the background monitor re-runs the checks below, in seconds.
+refresh_interval_seconds: 60
+
+internet:
+  # Host pinged to decide whether the internet is reachable at all.
+  ping_host: 1.1.1.1
+  ping_count: 3
+  ping_timeout_seconds: 2
+  # Host used to confirm DNS resolution is working (separate from raw
+  # connectivity, so a DNS outage shows up distinctly from a link outage).
+  dns_check_host: google.com
+  # Speed tests are heavier (tens of MB of traffic, ~20-30s), so they run on
+  # their own interval rather than every refresh cycle.
+  run_speedtest: true
+  speedtest_interval_minutes: 30
+
+home_assistant:
+  enabled: true
+  base_url: "http://homeassistant.local:8123"
+  # Profile -> Long-Lived Access Tokens -> Create Token
+  token: "REPLACE_WITH_LONG_LIVED_ACCESS_TOKEN"
+  verify_ssl: true
+  timeout_seconds: 5
+  # Also pull /api/states and flag any entities stuck unavailable/unknown.
+  check_entities: true
+  # entity_ids that are expected to be unavailable sometimes (e.g. a phone
+  # tracker that's normally out of range) and shouldn't trigger a warning.
+  ignore_entities: []
+
+proxmox:
+  enabled: true
+  host: "proxmox.local"
+  port: 8006
+  # Datacenter -> Permissions -> API Tokens -> Add
+  # token_id is "user@realm!tokenname", e.g. "root@pam!homedash"
+  token_id: "root@pam!homedash"
+  token_secret: "REPLACE_WITH_TOKEN_SECRET"
+  # Proxmox's default cert is self-signed unless you've set up your own.
+  verify_ssl: false
+  timeout_seconds: 5
+  # Leave empty to auto-discover every node in the cluster.
+  nodes: []
+  # VMIDs that are expected to be stopped (templates, cold spares) and
+  # shouldn't count against the "everything running" check.
+  ignore_vms: []
+
+router:
+  enabled: true
+  host: "192.168.1.1"
+  ping_check: true
+  ping_timeout_seconds: 2
+  ssh:
+    enabled: true
+    port: 22
+    username: "root"
+    # Use either password or key_filename, not both.
+    password: null
+    key_filename: null
+    # Command run over SSH to fetch recent log lines. Pick the one that
+    # matches your router's firmware:
+    #   OpenWrt / DD-WRT:      logread | tail -n 200
+    #   pfSense / OPNsense:    clog /var/log/system.log | tail -n 200
+    #   UniFi (SSH to gateway): mca-ctrl -t dump-cfg  (or use the UniFi
+    #                           controller API instead - see README)
+    #   Generic Linux gateway: journalctl -n 200 --no-pager
+    log_command: "logread | tail -n 200"
+    # Lines containing any of these (case-insensitive) are flagged.
+    error_patterns:
+      - "error"
+      - "fail"
+      - "critical"
+      - "denied"
+      - "attack"
+    # Lines matching these are dropped even if they also match an error
+    # pattern above (use for noisy, known-benign log lines).
+    ignore_patterns: []
+    max_flagged_lines: 20
+
+ui:
+  fullscreen: true
+  theme: "dark"
+  # Seconds between UI refreshes reading the latest monitor results.
+  poll_interval_seconds: 2

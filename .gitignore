@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Real config with secrets - never commit this. Copy config.example.yaml -> config.yaml
+config.yaml

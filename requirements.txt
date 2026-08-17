@@ -1,0 +1,4 @@
+requests>=2.31
+PyYAML>=6.0
+paramiko>=3.4
+speedtest-cli>=2.1.3
