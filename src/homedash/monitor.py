@@ -52,6 +52,9 @@ class Monitor:
             check.name: CheckResult.unknown(check.name) for check in self.checks
         }
         self._stop_event = threading.Event()
+        # Set to wake the loop early, either to stop or to run a refresh
+        # right now instead of waiting out the rest of the interval.
+        self._wake_event = threading.Event()
         self._thread: threading.Thread | None = None
 
     def run_once(self) -> dict[str, CheckResult]:
@@ -70,20 +73,31 @@ class Monitor:
         with self._lock:
             return dict(self._results)
 
+    def request_refresh(self) -> None:
+        """Wake the background loop immediately instead of waiting out the
+        rest of the refresh interval. Safe to call from any thread (e.g.
+        the UI's manual refresh button) - just sets an event, doesn't block
+        or run checks itself.
+        """
+        self._wake_event.set()
+
     def start(self) -> None:
         """Start the background polling loop (idempotent)."""
         if self._thread and self._thread.is_alive():
             return
         self._stop_event.clear()
+        self._wake_event.clear()
         self._thread = threading.Thread(target=self._loop, name="homedash-monitor", daemon=True)
         self._thread.start()
 
     def stop(self, timeout: float = 5.0) -> None:
         self._stop_event.set()
+        self._wake_event.set()
         if self._thread:
             self._thread.join(timeout=timeout)
 
     def _loop(self) -> None:
         while not self._stop_event.is_set():
             self.run_once()
-            self._stop_event.wait(self.refresh_interval)
+            self._wake_event.wait(self.refresh_interval)
+            self._wake_event.clear()

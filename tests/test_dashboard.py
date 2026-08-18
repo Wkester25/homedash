@@ -72,3 +72,42 @@ def test_clicking_close_button_stops_the_monitor(app):
     close_buttons[0].invoke()
 
     assert app.monitor._thread is None or not app.monitor._thread.is_alive()
+
+
+def test_dashboard_has_exactly_one_refresh_button(app):
+    app.update()
+    refresh_buttons = [b for b in _find_widgets(app, "Button") if b.cget("text") == "↻"]
+    assert len(refresh_buttons) == 1
+
+
+def test_clicking_refresh_button_wakes_the_monitor(app):
+    app.update()
+    refresh_buttons = [b for b in _find_widgets(app, "Button") if b.cget("text") == "↻"]
+
+    refresh_buttons[0].invoke()
+
+    assert app.monitor._wake_event.is_set()
+
+
+def test_clicking_refresh_button_marks_tiles_as_refreshing(app):
+    app.update()
+    tile = next(iter(app._tiles.values()))
+    tile.update_result(CheckResult(name=tile.name, status=Status.OK, summary="was fine"))
+    app.update()
+    assert tile.meta_label.cget("text") != "Refreshing..."
+
+    refresh_buttons = [b for b in _find_widgets(app, "Button") if b.cget("text") == "↻"]
+    refresh_buttons[0].invoke()
+    app.update()
+
+    assert tile.meta_label.cget("text") == "Refreshing..."
+
+
+def test_refresh_button_disables_briefly_after_click(app):
+    app.update()
+    refresh_buttons = [b for b in _find_widgets(app, "Button") if b.cget("text") == "↻"]
+
+    refresh_buttons[0].invoke()
+    app.update()
+
+    assert str(refresh_buttons[0].cget("state")) == "disabled"

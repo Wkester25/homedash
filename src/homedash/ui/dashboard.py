@@ -62,6 +62,12 @@ class Tile(tk.Frame):
             text=f"{status_label(result.status)} - updated {format_last_checked(result)}"
         )
 
+    def mark_refreshing(self) -> None:
+        """Immediate feedback for a manual refresh, before the new result
+        for this check has actually come back from the background thread."""
+        self.status_dot.itemconfig(self._dot_id, fill=status_color(Status.UNKNOWN))
+        self.meta_label.config(text="Refreshing...")
+
 
 class DetailWindow(tk.Toplevel):
     """Popup showing the full detail lines for one check."""
@@ -136,6 +142,14 @@ class DashboardApp(tk.Tk):
         )
         close_btn.pack(side="right")
 
+        self.refresh_btn = tk.Button(
+            header, text="↻", command=self._request_refresh,
+            font=tkfont.Font(size=14, weight="bold"),
+            bg="#1565c0", fg="white", activebackground="#1976d2", activeforeground="white",
+            relief="flat", bd=0, width=3, height=1, cursor="hand2",
+        )
+        self.refresh_btn.pack(side="right", padx=(0, 8))
+
     def _build_layout(self) -> None:
         self._build_header()
 
@@ -150,6 +164,16 @@ class DashboardApp(tk.Tk):
             tile = Tile(container, check.name, on_click=self._open_detail)
             tile.grid(row=row, column=col, sticky="nsew", padx=6, pady=6)
             self._tiles[check.name] = tile
+
+    def _request_refresh(self) -> None:
+        for tile in self._tiles.values():
+            tile.mark_refreshing()
+        self.monitor.request_refresh()
+
+        # Brief cooldown so a flurry of taps doesn't look like nothing
+        # happened - request_refresh() itself is idempotent either way.
+        self.refresh_btn.config(state="disabled")
+        self.after(2000, lambda: self.refresh_btn.config(state="normal"))
 
     def _open_detail(self, name: str) -> None:
         results = self.monitor.get_results()

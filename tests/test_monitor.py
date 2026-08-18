@@ -1,3 +1,5 @@
+import time
+
 from homedash.checks.base import BaseCheck
 from homedash.models import CheckResult, Status
 from homedash.monitor import Monitor, build_checks
@@ -58,6 +60,29 @@ def test_start_and_stop_background_loop():
         monitor.stop(timeout=2)
 
     assert check.call_count >= 1
+
+
+def test_request_refresh_wakes_the_loop_immediately():
+    check = StubCheck()
+    # A long interval, so the test would time out if request_refresh()
+    # didn't actually wake the loop early rather than waiting it out.
+    monitor = Monitor(config={"refresh_interval_seconds": 3600}, checks=[check])
+
+    monitor.start()
+    try:
+        deadline = time.monotonic() + 2
+        while check.call_count < 1 and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert check.call_count == 1, "initial run should happen immediately on start"
+
+        monitor.request_refresh()
+
+        deadline = time.monotonic() + 2
+        while check.call_count < 2 and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert check.call_count == 2, "request_refresh() should trigger another run without waiting"
+    finally:
+        monitor.stop(timeout=2)
 
 
 def test_build_checks_respects_enabled_flags():
