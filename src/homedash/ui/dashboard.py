@@ -115,9 +115,32 @@ class DashboardApp(tk.Tk):
     def _toggle_fullscreen(self) -> None:
         self.attributes("-fullscreen", not self.attributes("-fullscreen"))
 
+    def _build_header(self) -> None:
+        # Fullscreen/kiosk mode has no window chrome, and a touchscreen has
+        # no Esc key - so the on-screen close button is the only way to
+        # quit on a touch-only setup.
+        header = tk.Frame(self, bg=BG_DARK)
+        header.pack(fill="x", padx=8, pady=8)
+
+        title = tk.Label(
+            header, text="HomeDash", font=tkfont.Font(family="Helvetica", size=16, weight="bold"),
+            bg=BG_DARK, fg=TEXT_LIGHT,
+        )
+        title.pack(side="left")
+
+        close_btn = tk.Button(
+            header, text="✕", command=self.destroy,
+            font=tkfont.Font(size=14, weight="bold"),
+            bg="#c62828", fg="white", activebackground="#e53935", activeforeground="white",
+            relief="flat", bd=0, width=3, height=1, cursor="hand2",
+        )
+        close_btn.pack(side="right")
+
     def _build_layout(self) -> None:
+        self._build_header()
+
         container = tk.Frame(self, bg=BG_DARK)
-        container.pack(fill="both", expand=True, padx=8, pady=8)
+        container.pack(fill="both", expand=True, padx=8, pady=(0, 8))
         container.grid_columnconfigure(0, weight=1)
         container.grid_columnconfigure(1, weight=1)
 
